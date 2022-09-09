@@ -45,7 +45,7 @@
     "karma": "^2.0.2",
     "karma-browserify": "^5.2.0",
     "karma-firefox-launcher": "^1.1.0",
-    "karma-mocha": "^1.2.0",
+    "karma-mocha": "^2.0.1",
     "karma-mocha-reporter": "^2.2.0",
     "mocha": "^5.2.0",
     "native-promise-only": "^0.8.0-a",

@@ -1,12 +1,11 @@
-var async = require('../../dist/async');
+var async = require('../../dist/async.js');
 var fs = require('fs-extra');
 var path = require('path');
 
 var $ = require('cheerio');
-var _ = require('lodash');
 
 var VERSION = require('../../package.json').version;
-var docsDir = path.join(__dirname, '../../docs');
+var docsDir = path.join(__dirname, '../../docs/v3');
 var pageTitle = 'Methods:';
 
 var docFilename = 'docs.html';
@@ -17,9 +16,6 @@ var sectionTitleClass = '.page-title';
 var HTMLFileBegin = '<!DOCTYPE html>\n<html lang="en">\n<head>\n';
 var HTMLFileHeadBodyJoin = '</head>\n<body>';
 var HTMLFileEnd = '</body>';
-
-var additionalFooterText = ' Documentation has been modified from the original. ' +
-    ' For more information, please see the <a href="https://github.com/caolan/async">async</a> repository.';
 
 function generateHTMLFile(filename, $page, callback) {
     var methodName = filename.match(/\/(\w+)\.js\.html$/);
@@ -37,23 +33,23 @@ function generateHTMLFile(filename, $page, callback) {
 }
 
 function extractModuleFiles(files) {
-    return _.filter(files, function(file) {
-        return _.startsWith(file, 'module') && file !== mainModuleFile;
+    return files.filter((file) => {
+        return file.startsWith('module') && file !== mainModuleFile;
     });
 }
 
 function combineFakeModules(files, callback) {
     var moduleFiles = extractModuleFiles(files);
 
-    fs.readFile(path.join(docsDir, mainModuleFile), 'utf8', function(err, mainModuleData) {
-        if (err) return callback(err);
+    fs.readFile(path.join(docsDir, mainModuleFile), 'utf8', (fileErr, mainModuleData) => {
+        if (fileErr) return callback(fileErr);
 
         var $mainPage = $(mainModuleData);
         // each 'module' (category) has a separate page, with all of the
         // important information in a 'main' div. Combine all of these divs into
         // one on the actual module page (async)
-        async.eachSeries(moduleFiles, function(file, fileCallback) {
-            fs.readFile(path.join(docsDir, file), 'utf8', function(err, moduleData) {
+        async.eachSeries(moduleFiles, (file, fileCallback) => {
+            fs.readFile(path.join(docsDir, file), 'utf8', (err, moduleData) => {
                 if (err) return fileCallback(err);
                 var $modulePage = $(moduleData);
                 var moduleName = $modulePage.find(sectionTitleClass).text();
@@ -61,7 +57,7 @@ function combineFakeModules(files, callback) {
                 $mainPage.find(mainScrollableSection).append($modulePage.find(mainScrollableSection).html());
                 return fileCallback();
             });
-        }, function(err) {
+        }, (err) => {
             if (err) return callback(err);
             generateHTMLFile(path.join(docsDir, docFilename), $mainPage, callback);
         });
@@ -83,7 +79,7 @@ function applyPreCheerioFixes(data) {
         .replace(rIncorrectCFText, fixedCFText)
         // for return types, JSDoc doesn't allow replacing the link text, so it
         // needs to be done here
-        .replace(rIncorrectModuleText, function(match, moduleName, methodName) {
+        .replace(rIncorrectModuleText, (match, moduleName, methodName) => {
             return '>'+methodName+'<';
         });
 }
@@ -125,10 +121,10 @@ function fixToc(file, $page, moduleFiles) {
     $nav.children('h2').remove();
 
     scrollSpyFix($page, $nav);
-
-    var prependFilename = (file === docFilename) ? '' : docFilename;
+    var isDocsFile = file === docFilename
+    var prependFilename = isDocsFile ? '' : docFilename;
     // make everything point to the same 'docs.html' page
-    _.each(moduleFiles, function(filename) {
+    moduleFiles.forEach((filename) => {
         $page.find('[href^="'+filename+'"]').each(function() {
             var $ele = $(this);
             var href = $ele.attr('href');
@@ -146,9 +142,7 @@ function fixToc(file, $page, moduleFiles) {
 }
 
 function fixFooter($page) {
-    // add a note to the footer that the documentation has been modified
     var $footer = $page.find('footer');
-    $footer.append(additionalFooterText);
     $page.find(mainScrollableSection).append($footer);
 }
 
@@ -156,9 +150,9 @@ function fixModuleLinks(files, callback) {
     var moduleFiles = extractModuleFiles(files);
 
 
-    async.each(files, function(file, fileCallback) {
+    async.each(files, (file, fileCallback) => {
         var filePath = path.join(docsDir, file);
-        fs.readFile(filePath, 'utf8', function(err, fileData) {
+        fs.readFile(filePath, 'utf8', (err, fileData) => {
             if (err) return fileCallback(err);
             var $file = $(applyPreCheerioFixes(fileData));
 
@@ -179,27 +173,24 @@ fs.copySync(path.join(__dirname, './jsdoc-custom.js'), path.join(docsDir, 'scrip
 fs.copySync(path.join(__dirname, '..', '..', 'logo', 'favicon.ico'), path.join(docsDir, 'favicon.ico'), { clobber: true });
 fs.copySync(path.join(__dirname, '..', '..', 'logo', 'async-logo.svg'), path.join(docsDir, 'img', 'async-logo.svg'), { clobber: true });
 
-fs.readdir(docsDir, function(err, files) {
-    if (err) {
-        throw err;
-    }
+fs.readdir(docsDir, (readErr, files) => {
+    if (readErr) { throw readErr; }
 
-    var HTMLFiles = _.filter(files, function(file) {
-        return path.extname(file) === '.html';
-    });
+    var HTMLFiles = files
+        .filter(file => path.extname(file) === '.html')
+        .filter(file => file !== 'docs.html')
+
 
     async.waterfall([
-        function(callback) {
-            combineFakeModules(HTMLFiles, function(err) {
-                if (err) return callback(err);
-                HTMLFiles.push(docFilename);
-                return callback(null);
-            });
-        },
+        async.constant(HTMLFiles),
+        combineFakeModules,
+        async.asyncify(() => {
+            HTMLFiles.push(docFilename)
+        }),
         function(callback) {
             fixModuleLinks(HTMLFiles, callback);
         }
-    ], function(err) {
+    ], (err) => {
         if (err) throw err;
         console.log('Docs generated successfully');
     });

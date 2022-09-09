@@ -2,13 +2,12 @@
 
 var _ = require("lodash");
 var Benchmark = require("benchmark");
-var exec = require("child_process").exec;
-var execSync = require("child_process").execSync;
+var {exec, execSync} = require("child_process");
 var fs = require("fs");
 var path = require("path");
 var mkdirp = require("mkdirp");
-var async = require("../");
-var suiteConfigs = require("./suites");
+var async = require("../index.js");
+var suiteConfigs = require("./suites.js");
 var semver = require("semver");
 
 var args = require("yargs")
@@ -60,7 +59,7 @@ console.log("Comparing " + version0 + " with " + version1 +
 console.log("--------------------------------------");
 
 
-async.eachSeries(versionNames, cloneVersion, function (err) {
+async.eachSeries(versionNames, cloneVersion, (err) => {
     if (err) { throw err; }
     versions = versionNames.map(requireVersion);
 
@@ -72,7 +71,7 @@ async.eachSeries(versionNames, cloneVersion, function (err) {
         .filter(doesNotMatch)
         .map(createSuite);
 
-    async.eachSeries(suites, runSuite, function () {
+    async.eachSeries(suites, runSuite, () => {
         var totalTime0 = +totalTime[version0].toPrecision(3);
         var totalTime1 = +totalTime[version1].toPrecision(3);
 
@@ -105,7 +104,7 @@ async.eachSeries(versionNames, cloneVersion, function (err) {
 });
 
 function runSuite(suite, callback) {
-    suite.on("complete", function () {
+    suite.on("complete", () => {
         callback();
     }).run({async: true});
 }
@@ -117,8 +116,8 @@ function setDefaultOptions(suiteConfig) {
 }
 
 function handleMultipleArgs(list, suiteConfig) {
-    return list.concat(suiteConfig.args.map(function (args) {
-        return _.defaults({args: args}, suiteConfig);
+    return list.concat(suiteConfig.args.map((suiteArgs) => {
+        return _.defaults({args: suiteArgs}, suiteConfig);
     }));
 }
 
@@ -137,7 +136,6 @@ function doesNotMatch(suiteConfig) {
 
 function createSuite(suiteConfig) {
     var suite = new Benchmark.Suite();
-    var args = suiteConfig.args;
     var errored = false;
 
     function addBench(version, versionName) {
@@ -145,7 +143,7 @@ function createSuite(suiteConfig) {
 
         try {
             suiteConfig.setup(1);
-            suiteConfig.fn(version, function () {});
+            suiteConfig.fn(version, () => {});
         } catch (e) {
             console.error(name + " Errored");
             errored = true;
@@ -153,17 +151,17 @@ function createSuite(suiteConfig) {
         }
 
         var options = _.extend({
-            versionName: versionName,
-            setup: function() {
-                suiteConfig.setup.apply(null, args);
+            versionName,
+            setup() {
+                suiteConfig.setup(...suiteConfig.args);
             },
-            onError: function (err) {
+            onError (err) {
                 console.log(err.stack);
             }
         }, benchOptions);
 
-        suite.add(name, function (deferred) {
-            suiteConfig.fn(version, function () {
+        suite.add(name, (deferred) => {
+            suiteConfig.fn(version, () => {
                 deferred.resolve();
             });
         }, options);
@@ -173,27 +171,27 @@ function createSuite(suiteConfig) {
     addBench(versions[1], versionNames[1]);
 
 
-    return suite.on('cycle', function(event) {
+    return suite.on('cycle', (event) => {
         var mean = event.target.stats.mean * 1000;
         console.log(event.target + ", " + mean.toPrecision(3) + "ms per run");
         var version = event.target.options.versionName;
         if (errored) return;
         totalTime[version] += mean;
     })
-    .on('error', function (err) { console.error(err); })
-    .on('complete', function() {
-        if (!errored) {
-            var fastest = this.filter('fastest');
-            if (fastest.length === 2) {
-                console.log("Tie");
-            } else {
-                var winner = fastest[0].options.versionName;
-                console.log(winner + ' is faster');
-                wins[winner]++;
+        .on('error', (err) => { console.error(err); })
+        .on('complete', function() {
+            if (!errored) {
+                var fastest = this.filter('fastest');
+                if (fastest.length === 2) {
+                    console.log("Tie");
+                } else {
+                    var winner = fastest[0].options.versionName;
+                    console.log(winner + ' is faster');
+                    wins[winner]++;
+                }
             }
-        }
-        console.log("--------------------------------------");
-    });
+            console.log("--------------------------------------");
+        });
 
 }
 
@@ -210,7 +208,7 @@ function cloneVersion(tag, callback) {
 
     var versionDir = __dirname + "/versions/" + tag;
     mkdirp.sync(versionDir);
-    fs.open(versionDir + "/package.json", "r", function (err, handle) {
+    fs.open(versionDir + "/package.json", "r", (err, handle) => {
         if (!err) {
             // version has already been cloned
             return fs.close(handle, callback);
@@ -220,12 +218,7 @@ function cloneVersion(tag, callback) {
 
         var cmd = "git clone --branch " + tag + " " + repoPath + " " + versionDir;
 
-        exec(cmd, function (err) {
-            if (err) {
-                throw err;
-            }
-            callback();
-        });
+        exec(cmd, callback);
 
     });
 }

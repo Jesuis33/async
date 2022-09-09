@@ -1,16 +1,18 @@
 module.exports = function(config) {
     config.set({
         browsers: ['Firefox'],
-        files: ['mocha_test/*.js'],
+        files: ['test/*.js'],
         frameworks: ['browserify', 'mocha'],
         plugins: [
             'karma-browserify',
             'karma-mocha',
             'karma-mocha-reporter',
-            'karma-firefox-launcher'
+            'karma-firefox-launcher',
+            'karma-safari-launcher'
         ],
         preprocessors: {
-            'mocha_test/*.js': ['browserify']
+            'test/*.js': ['browserify'],
+            'lib/*.js': ['browserify']
         },
         reporters: ['mocha'],
         singleRun: true,

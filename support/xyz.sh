@@ -103,8 +103,11 @@ case "$increment" in
   *) echo "Invalid --increment" >&2 ; exit 1 ;;
 esac
 
-git diff-files --quiet ||
-  (echo "Working directory contains unstaged changes" >&2 ; exit 1)
+[[ $(git rev-parse --abbrev-ref HEAD) == $branch ]] ||
+  (echo "Current branch does not match specified --branch" >&2 ; exit 1)
+
+#git diff-files --quiet ||
+#  (echo "Working directory contains unstaged changes" >&2 ; exit 1)
 
 name=$(node -p "require('./package.json').name" 2>/dev/null) ||
   (echo "Cannot read package name" >&2 ; exit 1)
@@ -131,12 +134,6 @@ run() {
     eval "$1"
   fi
 }
-
-# Prune before running tests to catch dependencies that have been
-# installed but not specified in the project's `package.json` file.
-
-run "npm prune"
-run "npm test"
 
 for script in "${scripts[@]}" ; do
   [[ $script == /* ]] || script="$(pwd)/$script"

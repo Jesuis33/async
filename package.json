@@ -55,7 +55,7 @@
     "rollup-plugin-node-resolve": "^2.0.0",
     "rollup-plugin-npm": "^2.0.0",
     "rsvp": "^3.0.18",
-    "semver": "^5.5.0",
+    "semver": "^7.3.8",
     "uglify-js": "~2.7.3",
     "yargs": "^11.0.0"
   },

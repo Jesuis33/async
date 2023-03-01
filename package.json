@@ -57,7 +57,7 @@
     "rsvp": "^3.0.18",
     "semver": "^5.5.0",
     "uglify-js": "~2.7.3",
-    "yargs": "^11.0.0"
+    "yargs": "^17.7.1"
   },
   "scripts": {
     "coverage": "nyc npm run mocha-node-test -- --grep @nycinvalid --invert",
